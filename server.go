@@ -6,44 +6,18 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
-	"os"
 	"time"
-
-	"github.com/lmittmann/tint"
 )
 
-var cfg *config
-
-func main() {
-	// load config
-	loadConfig()
-
-	// setup logger
-	var logger *slog.Logger
-	if cfg.Production {
-		logger = slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug, AddSource: true})) // JSON logging
-	} else {
-		logger = slog.New(tint.NewHandler(os.Stdout, &tint.Options{Level: slog.LevelDebug, AddSource: true, TimeFormat: time.DateTime})) // basic logging
-	}
-	slog.SetDefault(logger)
-
-	// create a http server
+func newServer() *http.Server {
 	handler := http.HandlerFunc(proxyHandler)
 
-	s := &http.Server{
+	return &http.Server{
 		Addr:           fmt.Sprintf("%s:%s", cfg.Host, cfg.Port),
 		Handler:        accessLog(corsMiddleware(rateLimit(handler))),
 		ReadTimeout:    10 * time.Second,
 		WriteTimeout:   15 * time.Second,
-		MaxHeaderBytes: 64 << 10, // 64KiB
-	}
-
-	slog.Info(fmt.Sprintf("configuration: %+v", *cfg))
-	slog.Info("running on " + s.Addr)
-
-	// run the proxy
-	if err := s.ListenAndServe(); err != nil {
-		panic(err)
+		MaxHeaderBytes: 64 << 10,
 	}
 }
 
@@ -55,7 +29,7 @@ func proxyHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// get the destination url from path
-	destUrl := targetUrl(r.URL)
+	destUrl := targetURL(r.URL)
 	if destUrl == nil {
 		http.Error(w, "invalid target URL", http.StatusBadRequest)
 		return
