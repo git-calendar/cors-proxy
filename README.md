@@ -1,76 +1,76 @@
 # Git Calendar CORS Proxy
-A simple proxy that adds the [CORS](https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/CORS) headers to every request.\
-It’s used as a workaround for browser security restrictions when accessing third-party services like GitHub, GitLab, Codeberg, etc., which we don’t control.
+[![Go version](https://img.shields.io/github/go-mod/go-version/git-calendar/cors-proxy)](./go.mod)
+[![Go](https://github.com/git-calendar/cors-proxy/actions/workflows/go.yaml/badge.svg)](https://github.com/git-calendar/cors-proxy/actions/workflows/go.yaml)
+[![License](https://img.shields.io/github/license/git-calendar/cors-proxy)](./LICENSE.txt)
+
+A small proxy that adds [CORS](https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/CORS) headers to Git-over-HTTP responses.
+It works around browser security restrictions when accessing third-party Git services such as GitHub, GitLab, and Codeberg, which we do not control.
 
 > [!IMPORTANT]
-> This proxy is not needed when running `git-calendar/core` outside of a browser.
+> This proxy is not needed when `git-calendar/core` runs outside a browser.
 
 ## Build and run
 ### Bare metal
 ```sh
-cd cmd/cors-proxy
 go run .
 go build .
 ```
 
-### Podman/Docker
+### Docker/Podman
 ```sh
-cd cmd/cors-proxy
+docker build -t cors-proxy .
 podman build -t cors-proxy .
 ```
 ```sh
+docker run -d --rm \
+  --name cors-proxy \
+  -p 8080:8080 \
+  cors-proxy
+
 podman run -d --rm \
   --name cors-proxy \
   -p 8080:8080 \
   cors-proxy
 ```
 
-### Enviroment variables (optional; those values are default)
+### Environment variables
+All variables are optional; the values below are the defaults:
+
 ```sh
 HOST=0.0.0.0
 PORT=8080
 PRODUCTION=false
 UPSTREAM_TIMEOUT=15s
-MAX_RESPONSE_SIZE=1048576 # 1MB in bytes (1024^2)
+MAX_RESPONSE_SIZE=1048576 # 1 MiB in bytes (1024^2)
 ALLOWED_HOSTS=github.com,raw.githubusercontent.com,gitlab.com,codeberg.org
-RATE_TOKENS=40
+RATE_TOKENS=60
 RATE_INTERVAL=1m
-RATE_IP_SOURCE_HEADER="" # useful when behind a reverse-proxy
+RATE_IP_SOURCE_HEADER="" # useful when behind a reverse proxy
 ```
 
 ## Usage
-Normal HTTP request from the browser:
-```js
-const response = await fetch("https://github.com");
-const html = await response.text();
-console.log(html);
-```
-results in:
-```
-Access to fetch at 'https://github.com' from origin 'https://...' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.
-```
-
----
-
-HTTP request through this proxy:
+A direct request to a Git smart HTTP endpoint may be blocked by the browser when the server does not return the required CORS headers:
 
 ```js
-const response = await fetch("http://localhost:8080/https://github.com");
-const html = await response.text();
-console.log(html);
+const target = "https://github.com/git/git.git/info/refs?service=git-upload-pack";
+const response = await fetch(target);
 ```
-succeds!
+
+Send the same request through the local proxy by placing the absolute target URL after the proxy address:
+
+```js
+const target = "https://github.com/git/git.git/info/refs?service=git-upload-pack";
+const response = await fetch(`http://localhost:8080/${target}`);
+const data = await response.arrayBuffer();
 ```
-<!doctype html><html lang="en"><head><tit...
-```
+
+The proxy only accepts Git smart HTTP paths ending in `info/refs`, `git-upload-pack`, or `git-receive-pack`. The target host must also be listed in `ALLOWED_HOSTS`.
 
 ---
-## I already have a reverse-proxy
-When using a [bare Git repository](https://git-scm.com/book/en/v2/Git-on-the-Server-Getting-Git-on-a-Server) on a [VPS](https://en.wikipedia.org/wiki/Virtual_private_server) this proxy is not necessary, since you control the enviroment.
+## I already use a reverse proxy
+When hosting a [bare Git repository](https://git-scm.com/book/en/v2/Git-on-the-Server-Getting-Git-on-a-Server) on a [VPS](https://en.wikipedia.org/wiki/Virtual_private_server), you usually do not need this proxy because you control the server environment.
 
-You can use any [reverse-proxy](https://en.wikipedia.org/wiki/Reverse_proxy) of your choice (e.g., [Caddy](https://caddyserver.com/) or [Nginx](https://nginx.org/en/)), and just add the CORS headers there.\
-Example configuration for Caddy:\
-(based on [this](https://www.jamesatkins.com/posts/git-over-http-with-caddy/) very cool article)
+Instead, add the CORS headers with a [reverse proxy](https://en.wikipedia.org/wiki/Reverse_proxy) such as [Caddy](https://caddyserver.com/) or [Nginx](https://nginx.org/en/). The following Caddy configuration is based on [this excellent article](https://www.jamesatkins.com/posts/git-over-http-with-caddy/):
 ```caddyfile
 your-repo-domain.com {
     # CORS setup (wildcards for origin, headers etc. often fail with credentials)
@@ -102,7 +102,7 @@ your-repo-domain.com {
     # make sure selinux doesnt restrict the access
     
     handle @git_cgi {
-        reverse_proxy unix//run/fcgiwrap.socket { # You will need fcgiwrap installed on your VPS
+        reverse_proxy unix//run/fcgiwrap.socket { # you will need fcgiwrap installed on your VPS
             transport fastcgi {
                 env SCRIPT_FILENAME /usr/libexec/git-core/git-http-backend # depends on distro; find the executable by `find /usr -name "git-http-backend"`
                 env GIT_HTTP_EXPORT_ALL 1
