@@ -1,0 +1,49 @@
+name: Go Pipeline
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+permissions:
+  contents: read
+
+jobs:
+  compile:
+    name: Compile and Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Download Dependencies
+        run: go mod download
+
+      - name: Verify Dependencies
+        run: go mod verify
+
+      - name: Check Formatting
+        run: |
+          unformatted="$(gofmt -l .)"
+          if [ -n "$unformatted" ]; then
+            echo "The following files need formatting:"
+            echo "$unformatted"
+            exit 1
+          fi
+
+      - name: Run Vet
+        run: go vet ./...
+
+      - name: Run Tests
+        run: go test -race ./...
+
+      - name: Compile
+        run: go build ./...
