@@ -7,19 +7,21 @@ import (
 	"time"
 )
 
+var upstreamDialer = newSSRFSafeDialer(net.DefaultResolver, &net.Dialer{
+	Timeout:   5 * time.Second,
+	KeepAlive: 30 * time.Second,
+})
+
 // a transport used for upstream requests
 var roundTripper http.RoundTripper = &http.Transport{
-	Proxy: http.ProxyFromEnvironment,
-	DialContext: (&net.Dialer{
-		Timeout:   5 * time.Second,
-		KeepAlive: 30 * time.Second,
-	}).DialContext,
+	DialContext:           upstreamDialer.DialContext,
 	MaxIdleConnsPerHost:   1000,
 	IdleConnTimeout:       60 * time.Second,
 	TLSHandshakeTimeout:   5 * time.Second,
 	ExpectContinueTimeout: 1 * time.Second,
 	ResponseHeaderTimeout: 10 * time.Second,
 	ForceAttemptHTTP2:     true,
+	Proxy:                 nil, // intentionally nil: an HTTP proxy would resolve the target again and bypass the SSRF-safe dialer
 }
 
 // Hop-by-hop headers must not be forwarded by proxies.
