@@ -55,7 +55,7 @@ func proxyHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	copyHeaders(r.Header, req.Header)
-	removeHopByHopHeaders(req.Header)
+	sanitizeRequestHeaders(req.Header)
 
 	// add context with timeout
 	ctx, cancel := context.WithTimeout(r.Context(), cfg.UpstreamTimeout)
@@ -72,7 +72,7 @@ func proxyHandler(w http.ResponseWriter, r *http.Request) {
 	defer resp.Body.Close()
 
 	// forward the headers back to client
-	removeHopByHopHeaders(resp.Header)
+	sanitizeResponseHeaders(resp.Header)
 	copyHeaders(resp.Header, w.Header())
 	w.WriteHeader(resp.StatusCode)
 

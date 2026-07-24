@@ -45,6 +45,21 @@ func copyHeaders(source, destination http.Header) {
 	}
 }
 
+func sanitizeRequestHeaders(headers http.Header) {
+	removeHopByHopHeaders(headers)
+	headers.Del("Cookie")
+	headers.Del("Cookie2")
+	headers.Del("Proxy")
+}
+
+func sanitizeResponseHeaders(headers http.Header) {
+	removeHopByHopHeaders(headers)
+	headers.Del("Set-Cookie")
+	headers.Del("Set-Cookie2")
+	headers.Del("Clear-Site-Data")
+	headers.Del("Alt-Svc")
+}
+
 func removeHopByHopHeaders(headers http.Header) {
 	for header := range strings.SplitSeq(headers.Get("Connection"), ",") {
 		headers.Del(strings.TrimSpace(header))
