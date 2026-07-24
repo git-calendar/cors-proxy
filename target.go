@@ -19,6 +19,11 @@ func targetURL(requestURL *url.URL) *url.URL {
 		return nil
 	}
 
+	destinationURL.Scheme = strings.ToLower(destinationURL.Scheme)
+	if destinationURL.Scheme != "http" && destinationURL.Scheme != "https" {
+		return nil
+	}
+
 	if requestURL.RawQuery != "" {
 		destinationURL.RawQuery = requestURL.RawQuery
 	}
@@ -26,9 +31,17 @@ func targetURL(requestURL *url.URL) *url.URL {
 	return destinationURL
 }
 
-// Checks if the request destination URL path looks like git request.
+// Checks if the destination path is an iCalendar file or Git smart HTTP endpoint.
+func isAllowedPath(destinationURL *url.URL) bool {
+	if destinationURL == nil {
+		return false
+	}
+
+	return strings.HasSuffix(strings.ToLower(destinationURL.Path), ".ics") || isGitRequest(destinationURL)
+}
+
 func isGitRequest(destinationURL *url.URL) bool {
-	return gitPathPattern.MatchString(destinationURL.Path)
+	return destinationURL != nil && gitPathPattern.MatchString(destinationURL.Path)
 }
 
 // Checks target/destination host with the allowlist.

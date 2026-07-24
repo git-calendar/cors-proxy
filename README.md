@@ -64,7 +64,7 @@ const response = await fetch(`http://localhost:8080/${target}`);
 const data = await response.arrayBuffer();
 ```
 
-The proxy only accepts Git smart HTTP paths ending in `info/refs`, `git-upload-pack`, or `git-receive-pack`. The target host must also be listed in `ALLOWED_HOSTS`.
+The proxy only accepts HTTP(S) paths ending in `.ics` or the Git smart HTTP endpoints `info/refs`, `git-upload-pack`, and `git-receive-pack`. The target host must also be listed in `ALLOWED_HOSTS`.
 
 ---
 ## I already use a reverse proxy

@@ -35,9 +35,9 @@ func proxyHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// only allow git-like requests
-	if !isGitRequest(destUrl) {
-		http.Error(w, "this is a git-only proxy", http.StatusBadRequest)
+	// only allow calendar files and Git smart HTTP endpoints
+	if !isAllowedPath(destUrl) {
+		http.Error(w, "target must be an .ics file or Git smart HTTP endpoint", http.StatusBadRequest)
 		return
 	}
 
