@@ -37,6 +37,17 @@ var hopByHopHeaders = map[string]bool{
 	"Upgrade":             true,
 }
 
+var forwardingHeaders = []string{
+	"Forwarded",
+	"X-Forwarded-For",
+	"X-Forwarded-Host",
+	"X-Forwarded-Proto",
+	"X-Forwarded-Port",
+	"X-Real-IP",
+	"CF-Connecting-IP",
+	"True-Client-IP",
+}
+
 func copyHeaders(source, destination http.Header) {
 	for name, values := range source {
 		for _, value := range values {
@@ -50,6 +61,32 @@ func sanitizeRequestHeaders(headers http.Header) {
 	headers.Del("Cookie")
 	headers.Del("Cookie2")
 	headers.Del("Proxy")
+
+	for _, name := range forwardingHeaders {
+		headers.Del(name)
+	}
+}
+
+func setTraceHeaders(headers http.Header, request *http.Request) {
+	if ip := originalClientIP(request, cfg.IPSourceHeader); ip != "" {
+		headers.Set("X-Forwarded-For", ip)
+	}
+	headers.Set("User-Agent", "GitCalendarCorsProxy/1.0 (+"+cfg.AbuseURL+")")
+}
+
+func originalClientIP(request *http.Request, sourceHeader string) string {
+	if sourceHeader != "" {
+		value, _, _ := strings.Cut(request.Header.Get(sourceHeader), ",")
+		if ip := net.ParseIP(strings.TrimSpace(value)); ip != nil {
+			return ip.String()
+		}
+	}
+
+	host, _, err := net.SplitHostPort(request.RemoteAddr)
+	if err != nil {
+		return ""
+	}
+	return host
 }
 
 func sanitizeResponseHeaders(headers http.Header) {

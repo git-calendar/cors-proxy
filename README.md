@@ -45,7 +45,8 @@ MAX_RESPONSE_SIZE=1048576 # 1 MiB in bytes (1024^2)
 ALLOWED_HOSTS=github.com,raw.githubusercontent.com,gitlab.com,codeberg.org
 RATE_TOKENS=60
 RATE_INTERVAL=1m
-RATE_IP_SOURCE_HEADER="" # useful when behind a reverse proxy
+RATE_IP_SOURCE_HEADER="" # trusted client-IP header when behind a reverse proxy
+ABUSE_URL=mailto:security@firu.dev
 ```
 
 ## Usage
@@ -65,6 +66,7 @@ const data = await response.arrayBuffer();
 ```
 
 The proxy only accepts HTTP(S) paths ending in `.ics` or the Git smart HTTP endpoints `info/refs`, `git-upload-pack`, and `git-receive-pack`. The target host must also be listed in `ALLOWED_HOSTS`.
+
 
 ---
 ## I already use a reverse proxy

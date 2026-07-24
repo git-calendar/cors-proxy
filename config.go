@@ -22,7 +22,8 @@ type config struct {
 	AllowedHosts    []string      `env:"ALLOWED_HOSTS,default=github.com,raw.githubusercontent.com,gitlab.com,codeberg.org"`
 	RateTokens      uint64        `env:"RATE_TOKENS,default=60"` // 60 req/min should be ok for legit usage
 	RateInterval    time.Duration `env:"RATE_INTERVAL,default=1m"`
-	IPSourceHeader  string        `env:"RATE_IP_SOURCE_HEADER"` // for reverse proxy
+	IPSourceHeader  string        `env:"RATE_IP_SOURCE_HEADER"` // trusted reverse proxy header
+	AbuseURL        string        `env:"ABUSE_URL,default=mailto:security@firu.dev"`
 }
 
 func loadConfig() {
@@ -32,6 +33,8 @@ func loadConfig() {
 	for i := range cfg.AllowedHosts {
 		cfg.AllowedHosts[i] = strings.TrimSpace(cfg.AllowedHosts[i])
 	}
+	cfg.IPSourceHeader = strings.TrimSpace(cfg.IPSourceHeader)
+	cfg.AbuseURL = strings.TrimSpace(cfg.AbuseURL)
 }
 
 func setupLogger() {

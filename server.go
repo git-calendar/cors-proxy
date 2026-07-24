@@ -56,6 +56,7 @@ func proxyHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	copyHeaders(r.Header, req.Header)
 	sanitizeRequestHeaders(req.Header)
+	setTraceHeaders(req.Header, r)
 
 	// add context with timeout
 	ctx, cancel := context.WithTimeout(r.Context(), cfg.UpstreamTimeout)

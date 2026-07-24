@@ -27,6 +27,7 @@ func TestProxyHandlerSanitizesHeaders(t *testing.T) {
 		AllowedHosts:    []string{"example.com"},
 		UpstreamTimeout: time.Second,
 		MaxResponseSize: 1024,
+		AbuseURL:        "https://proxy.example/report-abuse",
 	}
 
 	roundTripper = roundTripFunc(func(request *http.Request) (*http.Response, error) {
@@ -34,6 +35,20 @@ func TestProxyHandlerSanitizesHeaders(t *testing.T) {
 			if values := request.Header.Values(name); len(values) != 0 {
 				t.Fatalf("upstream %s headers = %q, want none", name, values)
 			}
+		}
+		for _, name := range forwardingHeaders {
+			if name == "X-Forwarded-For" {
+				continue
+			}
+			if values := request.Header.Values(name); len(values) != 0 {
+				t.Fatalf("upstream spoofed %s headers = %q, want none", name, values)
+			}
+		}
+		if got := request.Header.Get("X-Forwarded-For"); got != "203.0.113.10" {
+			t.Fatalf("upstream X-Forwarded-For = %q, want verified client IP", got)
+		}
+		if got := request.Header.Get("User-Agent"); got != "GitCalendarCorsProxy/1.0 (+https://proxy.example/report-abuse)" {
+			t.Fatalf("upstream User-Agent = %q, want proxy identity", got)
 		}
 		if got := request.Header.Get("Authorization"); got != "Basic private-repository-credentials" {
 			t.Fatalf("upstream Authorization = %q, want private Git credentials", got)
@@ -59,6 +74,11 @@ func TestProxyHandlerSanitizesHeaders(t *testing.T) {
 	request.Header.Set("Cookie2", "legacy=secret")
 	request.Header.Set("Proxy", "http://attacker.example")
 	request.Header.Set("Authorization", "Basic private-repository-credentials")
+	request.Header.Set("User-Agent", "AttackerProxy/1.0")
+	for _, name := range forwardingHeaders {
+		request.Header.Set(name, "198.51.100.99")
+	}
+	request.RemoteAddr = "203.0.113.10:54321"
 	response := httptest.NewRecorder()
 
 	proxyHandler(response, request)
