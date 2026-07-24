@@ -15,6 +15,66 @@ func (f roundTripFunc) RoundTrip(request *http.Request) (*http.Response, error) 
 	return f(request)
 }
 
+func TestSecurityTxt(t *testing.T) {
+	originalConfig := cfg
+	t.Cleanup(func() { cfg = originalConfig })
+	cfg = &config{AbuseURL: "mailto:abuse@proxy.example"}
+
+	before := time.Now().UTC()
+	response := httptest.NewRecorder()
+	proxyHandler(response, httptest.NewRequest(http.MethodGet, securityTxtPath, nil))
+
+	if response.Code != http.StatusOK {
+		t.Fatalf("response status = %d, want %d", response.Code, http.StatusOK)
+	}
+	if got := response.Header().Get("Content-Type"); got != "text/plain; charset=utf-8" {
+		t.Fatalf("Content-Type = %q, want text/plain; charset=utf-8", got)
+	}
+
+	fields := map[string]string{}
+	for line := range strings.SplitSeq(strings.TrimSpace(response.Body.String()), "\n") {
+		name, value, ok := strings.Cut(line, ": ")
+		if ok {
+			fields[name] = value
+		}
+	}
+	if got := fields["Contact"]; got != "mailto:abuse@proxy.example" {
+		t.Fatalf("Contact = %q, want configured abuse contact", got)
+	}
+	if got := fields["Preferred-Languages"]; got != "en" {
+		t.Fatalf("Preferred-Languages = %q, want en", got)
+	}
+
+	expires, err := time.Parse(time.RFC3339, fields["Expires"])
+	if err != nil {
+		t.Fatalf("Expires = %q, want RFC3339 timestamp: %v", fields["Expires"], err)
+	}
+	if expires.Before(before.AddDate(0, 11, 0)) || expires.After(before.AddDate(1, 0, 1)) {
+		t.Fatalf("Expires = %s, want approximately one year from now", expires)
+	}
+}
+
+func TestSecurityTxtHeadAndMethodNotAllowed(t *testing.T) {
+	originalConfig := cfg
+	t.Cleanup(func() { cfg = originalConfig })
+	cfg = &config{AbuseURL: "mailto:abuse@proxy.example"}
+
+	headResponse := httptest.NewRecorder()
+	proxyHandler(headResponse, httptest.NewRequest(http.MethodHead, securityTxtPath, nil))
+	if headResponse.Code != http.StatusOK || headResponse.Body.Len() != 0 {
+		t.Fatalf("HEAD response = status %d, body %q; want 200 with empty body", headResponse.Code, headResponse.Body.String())
+	}
+
+	postResponse := httptest.NewRecorder()
+	proxyHandler(postResponse, httptest.NewRequest(http.MethodPost, securityTxtPath, nil))
+	if postResponse.Code != http.StatusMethodNotAllowed {
+		t.Fatalf("POST response status = %d, want %d", postResponse.Code, http.StatusMethodNotAllowed)
+	}
+	if got := postResponse.Header().Get("Allow"); got != "GET, HEAD" {
+		t.Fatalf("Allow = %q, want GET, HEAD", got)
+	}
+}
+
 func TestProxyHandlerSanitizesHeaders(t *testing.T) {
 	originalConfig := cfg
 	originalRoundTripper := roundTripper

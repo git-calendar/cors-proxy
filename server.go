@@ -21,7 +21,14 @@ func newServer() *http.Server {
 	}
 }
 
+const securityTxtPath = "/.well-known/security.txt"
+
 func proxyHandler(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path == securityTxtPath {
+		serveSecurityTxt(w, r)
+		return
+	}
+
 	if isHealthCheck(r) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("git calendar cors proxy"))
@@ -94,4 +101,22 @@ func proxyHandler(w http.ResponseWriter, r *http.Request) {
 		slog.Info("response too large")
 		return
 	}
+}
+
+func serveSecurityTxt(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet && r.Method != http.MethodHead {
+		w.Header().Set("Allow", "GET, HEAD")
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	w.Header().Set("Cache-Control", "public, max-age=86400")
+	w.WriteHeader(http.StatusOK)
+	if r.Method == http.MethodHead {
+		return
+	}
+
+	expires := time.Now().UTC().AddDate(1, 0, 0).Format(time.RFC3339)
+	fmt.Fprintf(w, "Contact: %s\nExpires: %s\nPreferred-Languages: en\n", cfg.AbuseURL, expires)
 }

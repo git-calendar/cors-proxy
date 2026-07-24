@@ -67,6 +67,8 @@ const data = await response.arrayBuffer();
 
 The proxy only accepts HTTP(S) paths ending in `.ics` or the Git smart HTTP endpoints `info/refs`, `git-upload-pack`, and `git-receive-pack`. The target host must also be listed in `ALLOWED_HOSTS`.
 
+## Report abuse
+Every deployment exposes `/.well-known/security.txt` with the contact configured by `ABUSE_URL`. The same contact is included in every upstream `User-Agent`. Operators should set it to their own monitored HTTPS page or `mailto:` address.
 
 ---
 ## I already use a reverse proxy
