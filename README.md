@@ -12,8 +12,8 @@ It works around browser security restrictions when accessing third-party Git ser
 ## Build and run
 ### Bare metal
 ```sh
-go run .
-go build .
+go run ./cmd/cors-proxy
+go build -o cors-proxy ./cmd/cors-proxy
 ```
 
 ### Docker/Podman

@@ -1,16 +1,11 @@
-package main
+package proxy
 
 import (
-	"net/http"
 	"net/url"
-	"regexp"
-	"slices"
 	"strings"
 )
 
-var gitPathPattern = regexp.MustCompile(`/(info/refs|git-upload-pack|git-receive-pack)/?$`)
-
-// Extracts the target/destination URL from the path of the original request.
+// targetURL extracts the destination URL from the incoming request path.
 func targetURL(requestURL *url.URL) *url.URL {
 	target := strings.TrimPrefix(requestURL.Path, "/")
 
@@ -31,7 +26,8 @@ func targetURL(requestURL *url.URL) *url.URL {
 	return destinationURL
 }
 
-// Checks if the destination path is an iCalendar file or Git smart HTTP endpoint.
+// isAllowedPath reports whether the destination is an iCalendar file or a Git
+// smart HTTP endpoint.
 func isAllowedPath(destinationURL *url.URL) bool {
 	if destinationURL == nil {
 		return false
@@ -41,19 +37,22 @@ func isAllowedPath(destinationURL *url.URL) bool {
 }
 
 func isGitRequest(destinationURL *url.URL) bool {
-	return destinationURL != nil && gitPathPattern.MatchString(destinationURL.Path)
-}
-
-// Checks target/destination host with the allowlist.
-func isAllowedHost(destinationURL *url.URL) bool {
 	if destinationURL == nil {
 		return false
 	}
 
-	host := strings.ToLower(destinationURL.Hostname())
-	return slices.Contains(cfg.AllowedHosts, host)
+	path := strings.TrimSuffix(destinationURL.Path, "/")
+	return strings.HasSuffix(path, "/info/refs") ||
+		strings.HasSuffix(path, "/git-upload-pack") ||
+		strings.HasSuffix(path, "/git-receive-pack")
 }
 
-func isHealthCheck(request *http.Request) bool {
-	return request.Method == http.MethodGet && request.URL.Path == "/"
+// isAllowedHost checks the destination host against the configured allowlist.
+func (h *Handler) isAllowedHost(destinationURL *url.URL) bool {
+	if destinationURL == nil {
+		return false
+	}
+
+	_, allowed := h.allowedHosts[strings.ToLower(destinationURL.Hostname())]
+	return allowed
 }

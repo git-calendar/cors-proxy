@@ -6,7 +6,7 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 COPY ./ ./
-RUN CGO_ENABLED=0 GOOS=linux go build -o /cors-proxy
+RUN CGO_ENABLED=0 GOOS=linux go build -o /cors-proxy ./cmd/cors-proxy
 
 # Final image
 FROM alpine:latest

@@ -1,4 +1,4 @@
-module github.com/git-calendar/core/cmd/cors-proxy
+module github.com/git-calendar/cors-proxy
 
 go 1.26.4
 

@@ -1,6 +1,7 @@
-package main
+package proxy
 
 import (
+	"net/http"
 	"net/http/httptest"
 	"testing"
 )
@@ -55,5 +56,21 @@ func TestOriginalClientIP(t *testing.T) {
 				t.Fatalf("originalClientIP() = %q, want %q", got, test.want)
 			}
 		})
+	}
+}
+
+func TestNewUsesSSRFSafeTransportWithoutProxy(t *testing.T) {
+	t.Parallel()
+
+	handler := New(Options{})
+	transport, ok := handler.transport.(*http.Transport)
+	if !ok {
+		t.Fatalf("default transport type = %T, want *http.Transport", handler.transport)
+	}
+	if transport.DialContext == nil {
+		t.Fatal("default transport DialContext is nil, want SSRF-safe dialer")
+	}
+	if transport.Proxy != nil {
+		t.Fatal("default transport Proxy is non-nil, want proxy resolution disabled")
 	}
 }

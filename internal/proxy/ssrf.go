@@ -1,4 +1,4 @@
-package main
+package proxy
 
 import (
 	"context"
@@ -23,7 +23,7 @@ func (d *ssrfSafeDialer) DialContext(ctx context.Context, network, address strin
 	}
 
 	ips := []netip.Addr{}
-	if ip, err := netip.ParseAddr(host); err == nil {
+	if ip, parseErr := netip.ParseAddr(host); parseErr == nil {
 		ips = append(ips, ip)
 	} else {
 		ips, err = d.lookupNetIP(ctx, "ip", host)
@@ -35,7 +35,8 @@ func (d *ssrfSafeDialer) DialContext(ctx context.Context, network, address strin
 		return nil, fmt.Errorf("upstream host %q resolved to no addresses", host)
 	}
 
-	// Reject the whole DNS answer if any address is unsafe.
+	// Reject the complete DNS answer if any address is unsafe. This prevents a
+	// resolver or attacker from hiding a private address in a mixed response.
 	for i, ip := range ips {
 		ips[i] = ip.Unmap()
 		if isForbiddenUpstreamIP(ips[i]) {
@@ -44,11 +45,11 @@ func (d *ssrfSafeDialer) DialContext(ctx context.Context, network, address strin
 	}
 
 	// Dial the validated IP directly so DNS cannot change the destination.
-	var conn net.Conn
+	var connection net.Conn
 	for _, ip := range ips {
-		conn, err = d.dialContext(ctx, network, net.JoinHostPort(ip.String(), port))
+		connection, err = d.dialContext(ctx, network, net.JoinHostPort(ip.String(), port))
 		if err == nil {
-			return conn, nil
+			return connection, nil
 		}
 	}
 	return nil, err

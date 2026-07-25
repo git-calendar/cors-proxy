@@ -1,4 +1,4 @@
-package main
+package proxy
 
 import (
 	"net/url"
@@ -62,5 +62,17 @@ func TestTargetURLAllowsOnlyHTTP(t *testing.T) {
 				t.Fatalf("targetURL(%q) allowed = %t, want %t", test.target, got, test.allowed)
 			}
 		})
+	}
+}
+
+func TestNewNormalizesAllowedHosts(t *testing.T) {
+	t.Parallel()
+
+	handler := New(Options{AllowedHosts: []string{" Example.COM ", "EXAMPLE.com"}})
+	if len(handler.allowedHosts) != 1 {
+		t.Fatalf("allowed host count = %d, want 1", len(handler.allowedHosts))
+	}
+	if !handler.isAllowedHost(&url.URL{Host: "EXAMPLE.COM:443"}) {
+		t.Fatal("normalized allowed host did not match mixed-case destination")
 	}
 }
