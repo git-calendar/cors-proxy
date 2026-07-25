@@ -17,10 +17,22 @@ go build -o cors-proxy ./cmd/cors-proxy
 ```
 
 ### Docker/Podman
+Build the image locally:
+
 ```sh
 docker build -t cors-proxy .
 podman build -t cors-proxy .
 ```
+
+Or pull the published multi-architecture image from GitHub Container Registry:
+
+```sh
+docker pull ghcr.io/git-calendar/cors-proxy:latest
+podman pull ghcr.io/git-calendar/cors-proxy:latest
+```
+
+Run the image:
+
 ```sh
 docker run -d --rm \
   --name cors-proxy \
