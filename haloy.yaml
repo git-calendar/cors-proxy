@@ -11,3 +11,14 @@ env:
     value: x-forwarded-for # set by haloy-proxy
   - name: ABUSE_CONTACT
     value: mailto:security@firu.dev
+  - name: CORS_ALLOW_ORIGIN
+    value: https://git-calendar.org
+  - name: ALLOWED_HOSTS
+    value: >-
+      github.com,
+      raw.githubusercontent.com,
+      gitlab.com,
+      codeberg.org,
+      web-api.worldpublicholiday.com,
+      calendar.google.com,
+      calendars.icloud.com

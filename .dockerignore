@@ -1,0 +1,22 @@
+# version control
+.git/
+.github/
+.gitignore
+
+# docker and deployment configuration
+Dockerfile
+.dockerignore
+haloy.yaml
+
+# documentation
+README.md
+LICENSE.txt
+
+# editor and OS files
+.vscode/
+.zed/
+.DS_Store
+
+# build artifacts
+bin/
+cors-proxy
