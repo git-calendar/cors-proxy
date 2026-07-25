@@ -88,11 +88,11 @@ func TestSecurityHandler(t *testing.T) {
 	t.Parallel()
 
 	now := time.Date(2026, time.July, 25, 12, 0, 0, 0, time.UTC)
-	handler := newSecurityHandler("mailto:security@firu.dev", func() time.Time { return now })
+	handler := newSecurityHandler("mailto:security@example.com", func() time.Time { return now })
 
 	response := httptest.NewRecorder()
 	handler.ServeHTTP(response, httptest.NewRequest(http.MethodGet, securityTxtPath, nil))
-	wantBody := "Contact: mailto:security@firu.dev\nExpires: 2027-07-25T12:00:00Z\nPreferred-Languages: en\n"
+	wantBody := "Contact: mailto:security@example.com\nExpires: 2027-07-25T12:00:00Z\nPreferred-Languages: en\n"
 	if response.Code != http.StatusOK || response.Body.String() != wantBody {
 		t.Fatalf("security response = status %d, body %q; want 200, %q", response.Code, response.Body.String(), wantBody)
 	}

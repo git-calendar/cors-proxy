@@ -25,7 +25,7 @@ func TestLoad(t *testing.T) {
 	t.Setenv("RATE_TOKENS", "7")
 	t.Setenv("RATE_INTERVAL", "30s")
 	t.Setenv("RATE_IP_SOURCE_HEADER", " X-Real-IP ")
-	t.Setenv("ABUSE_URL", " mailto:security@example.com ")
+	t.Setenv("ABUSE_CONTACT", " mailto:security@example.com ")
 
 	got, err := Load(context.Background())
 	if err != nil {

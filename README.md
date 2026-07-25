@@ -3,8 +3,8 @@
 [![Go](https://github.com/git-calendar/cors-proxy/actions/workflows/go.yaml/badge.svg)](https://github.com/git-calendar/cors-proxy/actions/workflows/go.yaml)
 [![License](https://img.shields.io/github/license/git-calendar/cors-proxy)](./LICENSE.txt)
 
-A small proxy that adds [CORS](https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/CORS) headers to Git-over-HTTP responses.
-It works around browser security restrictions when accessing third-party Git services such as GitHub, GitLab, and Codeberg, which we do not control.
+A small proxy that adds [CORS](https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/CORS) headers to Git-over-HTTP responses and iCalendar (`.ics`) files.
+It works around browser security restrictions when accessing third-party calendars and Git services such as GitHub, GitLab, and Codeberg, which we do not control.
 
 > [!IMPORTANT]
 > This proxy is not needed when `git-calendar/core` runs outside a browser.
@@ -46,19 +46,20 @@ ALLOWED_HOSTS=github.com,raw.githubusercontent.com,gitlab.com,codeberg.org
 RATE_TOKENS=60
 RATE_INTERVAL=1m
 RATE_IP_SOURCE_HEADER="" # trusted client-IP header when behind a reverse proxy
-ABUSE_URL=mailto:security@firu.dev
+ABUSE_CONTACT=mailto:security@example.com # TODO: replace with a your own contact before deployment
 ```
 
 ## Usage
-A direct request to a Git smart HTTP endpoint may be blocked by the browser when the server does not return the required CORS headers:
+Place the absolute target URL after the proxy address.
 
+### iCalendar files
 ```js
-const target = "https://github.com/git/git.git/info/refs?service=git-upload-pack";
-const response = await fetch(target);
+const target = "https://raw.githubusercontent.com/user/repository/main/calendar.ics";
+const response = await fetch(`http://localhost:8080/${target}`);
+const calendar = await response.text();
 ```
 
-Send the same request through the local proxy by placing the absolute target URL after the proxy address:
-
+### Git smart HTTP
 ```js
 const target = "https://github.com/git/git.git/info/refs?service=git-upload-pack";
 const response = await fetch(`http://localhost:8080/${target}`);

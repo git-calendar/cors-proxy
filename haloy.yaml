@@ -9,3 +9,5 @@ env:
     value: "true"
   - name: RATE_IP_SOURCE_HEADER
     value: x-forwarded-for # set by haloy-proxy
+  - name: ABUSE_CONTACT
+    value: mailto:security@firu.dev

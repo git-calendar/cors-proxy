@@ -18,8 +18,8 @@ type Config struct {
 	AllowedHosts    []string      `env:"ALLOWED_HOSTS,default=github.com,raw.githubusercontent.com,gitlab.com,codeberg.org"`
 	RateTokens      uint64        `env:"RATE_TOKENS,default=60"` // 60 requests per minute should be enough for legitimate usage
 	RateInterval    time.Duration `env:"RATE_INTERVAL,default=1m"`
-	IPSourceHeader  string        `env:"RATE_IP_SOURCE_HEADER"` // trusted reverse proxy header
-	AbuseContact    string        `env:"ABUSE_URL,default=mailto:security@firu.dev"`
+	IPSourceHeader  string        `env:"RATE_IP_SOURCE_HEADER"`                             // trusted reverse proxy header
+	AbuseContact    string        `env:"ABUSE_CONTACT,default=mailto:security@example.com"` // TODO: configure a monitored contact before deployment
 }
 
 // Load reads configuration from the environment and normalizes string values.
