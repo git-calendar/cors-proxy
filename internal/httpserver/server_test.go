@@ -9,12 +9,14 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/git-calendar/cors-proxy/internal/config"
 )
 
 func TestNewServer(t *testing.T) {
 	t.Parallel()
 
-	server, err := New(Options{Host: "127.0.0.1", Port: "9090"}, http.NotFoundHandler(), discardLogger())
+	server, err := New(config.Config{Host: "127.0.0.1", Port: "9090"}, http.NotFoundHandler(), discardLogger())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -40,8 +42,9 @@ func TestHandlerRoutesLocalAndProxyRequests(t *testing.T) {
 		w.WriteHeader(http.StatusAccepted)
 		_, _ = io.WriteString(w, "proxied")
 	})
-	handler, err := NewHandler(Options{
-		AbuseContact: "mailto:security@example.com",
+	handler, err := NewHandler(config.Config{
+		AbuseContact:    "mailto:security@example.com",
+		CORSAllowOrigin: "*",
 	}, proxyHandler, logger)
 	if err != nil {
 		t.Fatal(err)

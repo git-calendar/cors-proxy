@@ -39,6 +39,7 @@ func TestLoad(t *testing.T) {
 		UpstreamTimeout: 3 * time.Second,
 		MaxResponseSize: 2048,
 		AllowedHosts:    []string{"github.com", "example.com"},
+		CORSAllowOrigin: "*",
 		RateTokens:      7,
 		RateInterval:    30 * time.Second,
 		IPSourceHeader:  "X-Real-IP",

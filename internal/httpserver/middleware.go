@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/git-calendar/cors-proxy/internal/proxy"
 	"github.com/sethvargo/go-limiter"
 	"github.com/sethvargo/go-limiter/httplimit"
 	"github.com/sethvargo/go-limiter/memorystore"
@@ -68,9 +69,9 @@ func clientIPKey(sourceHeader string) httplimit.KeyFunc {
 }
 
 // corsMiddleware adds CORS headers so browsers can use the proxy.
-func corsMiddleware(next http.Handler) http.Handler {
+func corsMiddleware(next http.Handler, origins string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Origin", origins)
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type, Git-Protocol")
 
@@ -92,13 +93,20 @@ func accessLog(next http.Handler, logger *slog.Logger) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 		writer := &responseWriter{ResponseWriter: w, status: http.StatusOK}
+
 		next.ServeHTTP(writer, r)
-		logger.Info(
-			"access",
+
+		attributes := []any{
 			"method", r.Method,
 			"status", writer.status,
 			"duration", time.Since(start),
-		)
+		}
+		if host, targetType, ok := proxy.TargetMetadata(r.URL); ok {
+			attributes = append(attributes, "target_host", host, "target_type", targetType)
+		} else {
+			attributes = append(attributes, "target_type", "other", "path", r.URL.Path)
+		}
+		logger.Info("access", attributes...)
 	})
 }
 

@@ -22,6 +22,10 @@ func main() {
 	logger := config.NewLogger(cfg.Production)
 	slog.SetDefault(logger)
 
+	if cfg.AbuseContact == "" {
+		slog.Warn("configure the ABUSE_CONTACT in production environment")
+	}
+
 	proxyHandler := proxy.New(proxy.Options{
 		AllowedHosts:    cfg.AllowedHosts,
 		UpstreamTimeout: cfg.UpstreamTimeout,
@@ -30,20 +34,12 @@ func main() {
 		AbuseContact:    cfg.AbuseContact,
 		Logger:          logger,
 	})
-	server, err := httpserver.New(httpserver.Options{
-		Host:           cfg.Host,
-		Port:           cfg.Port,
-		Production:     cfg.Production,
-		RateTokens:     cfg.RateTokens,
-		RateInterval:   cfg.RateInterval,
-		IPSourceHeader: cfg.IPSourceHeader,
-		AbuseContact:   cfg.AbuseContact,
-	}, proxyHandler, logger)
+	server, err := httpserver.New(cfg, proxyHandler, logger)
 	if err != nil {
 		panic(err)
 	}
 
-	logger.Info("configuration", "config", cfg)
+	logger.Info("configuration", "cfg", cfg)
 	logger.Info("running", "address", server.Addr)
 
 	go func() {

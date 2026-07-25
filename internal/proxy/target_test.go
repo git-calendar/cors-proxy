@@ -65,6 +65,57 @@ func TestTargetURLAllowsOnlyHTTP(t *testing.T) {
 	}
 }
 
+func TestTargetMetadata(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		requestPath string
+		host        string
+		targetType  string
+		ok          bool
+	}{
+		{
+			requestPath: "/https://calendar.example.com/private/feed-token.ics",
+			host:        "calendar.example.com",
+			targetType:  "ical",
+			ok:          true,
+		},
+		{
+			requestPath: "/https://token@github.com/org/private.git/info/refs",
+			host:        "github.com",
+			targetType:  "git",
+			ok:          true,
+		},
+		{
+			requestPath: "/https://example.com/unsupported",
+			host:        "example.com",
+			targetType:  "other",
+			ok:          true,
+		},
+		{requestPath: "/favicon.ico"},
+	}
+
+	for _, test := range tests {
+		t.Run(test.requestPath, func(t *testing.T) {
+			t.Parallel()
+
+			host, targetType, ok := TargetMetadata(&url.URL{Path: test.requestPath})
+			if host != test.host || targetType != test.targetType || ok != test.ok {
+				t.Fatalf(
+					"TargetMetadata(%q) = (%q, %q, %t), want (%q, %q, %t)",
+					test.requestPath,
+					host,
+					targetType,
+					ok,
+					test.host,
+					test.targetType,
+					test.ok,
+				)
+			}
+		})
+	}
+}
+
 func TestNewNormalizesAllowedHosts(t *testing.T) {
 	t.Parallel()
 

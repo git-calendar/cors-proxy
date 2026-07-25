@@ -47,6 +47,23 @@ func isGitRequest(destinationURL *url.URL) bool {
 		strings.HasSuffix(path, "/git-receive-pack")
 }
 
+// TargetMetadata returns safe access-log metadata for an upstream request URL.
+func TargetMetadata(requestURL *url.URL) (host, targetType string, ok bool) {
+	destinationURL := targetURL(requestURL)
+	if destinationURL == nil {
+		return "", "", false
+	}
+
+	targetType = "other"
+	if isGitRequest(destinationURL) {
+		targetType = "git"
+	} else if isAllowedPath(destinationURL) {
+		targetType = "ical"
+	}
+
+	return strings.ToLower(destinationURL.Hostname()), targetType, true
+}
+
 // isAllowedHost checks the destination host against the configured allowlist.
 func (h *Handler) isAllowedHost(destinationURL *url.URL) bool {
 	if destinationURL == nil {

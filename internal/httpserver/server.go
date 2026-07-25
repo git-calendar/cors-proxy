@@ -5,28 +5,19 @@ import (
 	"net"
 	"net/http"
 	"time"
+
+	"github.com/git-calendar/cors-proxy/internal/config"
 )
 
-// Options configures the HTTP listener, local routes, and rate limiter.
-type Options struct {
-	Host           string
-	Port           string
-	Production     bool
-	RateTokens     uint64
-	RateInterval   time.Duration
-	IPSourceHeader string
-	AbuseContact   string
-}
-
 // New constructs the HTTP server and its complete handler stack.
-func New(options Options, proxyHandler http.Handler, logger *slog.Logger) (*http.Server, error) {
-	handler, err := NewHandler(options, proxyHandler, logger)
+func New(cfg config.Config, proxyHandler http.Handler, logger *slog.Logger) (*http.Server, error) {
+	handler, err := NewHandler(cfg, proxyHandler, logger)
 	if err != nil {
 		return nil, err
 	}
 
 	return &http.Server{
-		Addr:           net.JoinHostPort(options.Host, options.Port),
+		Addr:           net.JoinHostPort(cfg.Host, cfg.Port),
 		Handler:        handler,
 		ReadTimeout:    10 * time.Second,
 		WriteTimeout:   15 * time.Second,
@@ -35,12 +26,12 @@ func New(options Options, proxyHandler http.Handler, logger *slog.Logger) (*http
 }
 
 // NewHandler constructs local routes and applies middleware only to proxy traffic.
-func NewHandler(options Options, proxyHandler http.Handler, logger *slog.Logger) (http.Handler, error) {
+func NewHandler(cfg config.Config, proxyHandler http.Handler, logger *slog.Logger) (http.Handler, error) {
 	limitedProxy, err := rateLimit(proxyHandler, rateLimitOptions{
-		production:     options.Production,
-		tokens:         options.RateTokens,
-		interval:       options.RateInterval,
-		ipSourceHeader: options.IPSourceHeader,
+		production:     cfg.Production,
+		tokens:         cfg.RateTokens,
+		interval:       cfg.RateInterval,
+		ipSourceHeader: cfg.IPSourceHeader,
 	})
 	if err != nil {
 		return nil, err
@@ -48,7 +39,7 @@ func NewHandler(options Options, proxyHandler http.Handler, logger *slog.Logger)
 
 	return &router{
 		health:   http.HandlerFunc(serveHealth),
-		security: newSecurityHandler(options.AbuseContact, time.Now),
-		proxy:    accessLog(corsMiddleware(limitedProxy), logger),
+		security: newSecurityHandler(cfg.AbuseContact, time.Now),
+		proxy:    accessLog(corsMiddleware(limitedProxy, cfg.CORSAllowOrigin), logger),
 	}, nil
 }

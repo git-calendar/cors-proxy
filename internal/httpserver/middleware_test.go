@@ -17,7 +17,7 @@ func TestCORSMiddleware(t *testing.T) {
 	handler := corsMiddleware(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		calls++
 		w.WriteHeader(http.StatusCreated)
-	}))
+	}), "*")
 
 	response := httptest.NewRecorder()
 	handler.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/target", nil))
@@ -162,14 +162,79 @@ func TestAccessLog(t *testing.T) {
 	}), slog.New(slog.NewTextHandler(&output, nil)))
 
 	response := httptest.NewRecorder()
-	handler.ServeHTTP(response, httptest.NewRequest(http.MethodPost, "/target", nil))
+	handler.ServeHTTP(response, httptest.NewRequest(http.MethodPost, "/favicon.ico?cache=1", nil))
 	if response.Code != http.StatusTeapot {
 		t.Fatalf("response = %d, want %d", response.Code, http.StatusTeapot)
 	}
-	for _, field := range []string{"msg=access", "method=POST", "status=418"} {
+	for _, field := range []string{
+		"msg=access",
+		"method=POST",
+		"target_type=other",
+		"path=/favicon.ico",
+		"status=418",
+		"duration=",
+	} {
 		if !strings.Contains(output.String(), field) {
 			t.Errorf("access log %q does not contain %q", output.String(), field)
 		}
+	}
+	if strings.Contains(output.String(), "cache=1") {
+		t.Errorf("access log %q contains the query string", output.String())
+	}
+}
+
+func TestAccessLogRedactsUpstreamPath(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		requestURI string
+		host       string
+		targetType string
+		sensitive  []string
+	}{
+		{
+			name:       "calendar",
+			requestURI: "/https://calendar.example.com/private/feed-token.ics?key=secret",
+			host:       "calendar.example.com",
+			targetType: "ical",
+			sensitive:  []string{"private", "feed-token", "key=secret"},
+		},
+		{
+			name:       "git",
+			requestURI: "/https://token@github.com/firu11/test-cal-enc.git/info/refs?service=git-upload-pack",
+			host:       "github.com",
+			targetType: "git",
+			sensitive:  []string{"token", "firu11", "test-cal-enc", "git-upload-pack"},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+
+			var output bytes.Buffer
+			handler := accessLog(noContentHandler(), slog.New(slog.NewTextHandler(&output, nil)))
+			handler.ServeHTTP(
+				httptest.NewRecorder(),
+				httptest.NewRequest(http.MethodGet, test.requestURI, nil),
+			)
+
+			logEntry := output.String()
+			for _, field := range []string{
+				"target_host=" + test.host,
+				"target_type=" + test.targetType,
+			} {
+				if !strings.Contains(logEntry, field) {
+					t.Errorf("access log %q does not contain %q", logEntry, field)
+				}
+			}
+			for _, value := range test.sensitive {
+				if strings.Contains(logEntry, value) {
+					t.Errorf("access log %q contains sensitive value %q", logEntry, value)
+				}
+			}
+		})
 	}
 }
 
