@@ -73,7 +73,7 @@ func corsMiddleware(next http.Handler, origins string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", origins)
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type, Git-Protocol")
+		w.Header().Set("Access-Control-Allow-Headers", "Authorization, Cache-Control, Content-Type, Git-Protocol, Pragma, User-Agent")
 
 		// Handle preflight requests locally so upstream Git servers cannot reject them.
 		if r.Method == http.MethodOptions {

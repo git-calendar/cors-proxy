@@ -27,7 +27,7 @@ func TestCORSMiddleware(t *testing.T) {
 	for name, want := range map[string]string{
 		"Access-Control-Allow-Origin":  "*",
 		"Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-		"Access-Control-Allow-Headers": "Authorization, Content-Type, Git-Protocol",
+		"Access-Control-Allow-Headers": "Authorization, Cache-Control, Content-Type, Git-Protocol, Pragma, User-Agent",
 	} {
 		if got := response.Header().Get(name); got != want {
 			t.Errorf("%s = %q, want %q", name, got, want)

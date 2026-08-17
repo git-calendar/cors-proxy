@@ -94,7 +94,7 @@ your-repo-domain.com {
     header {
         Access-Control-Allow-Origin  "https://calendar-web-domain.com" # TODO
         Access-Control-Allow-Methods "GET, POST, OPTIONS" # git uses these HTTP methods
-        Access-Control-Allow-Headers "Authorization, Content-Type, Git-Protocol" # git uses these headers
+        Access-Control-Allow-Headers "Authorization, Cache-Control, Content-Type, Git-Protocol, Pragma, User-Agent" # git clients use these headers
         Access-Control-Expose-Headers "Content-Length, Content-Range, Git-Protocol" # let client Wasm see those headers
         Access-Control-Allow-Credentials "true" # required for Basic Auth to work
     }
