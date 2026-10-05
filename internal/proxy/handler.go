@@ -112,7 +112,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	defer response.Body.Close()
 
-	if verifyCalendar {
+	if verifyCalendar && response.StatusCode >= 200 && response.StatusCode < 300 {
 		mediaType, _, _ := mime.ParseMediaType(response.Header.Get("Content-Type"))
 		if mediaType != "text/calendar" {
 			http.Error(w, "upstream response is not a calendar", http.StatusUnsupportedMediaType)

@@ -20,7 +20,7 @@ func TestHandlerSanitizesHeaders(t *testing.T) {
 	t.Parallel()
 
 	transport := roundTripFunc(func(request *http.Request) (*http.Response, error) {
-		for _, name := range []string{"Cookie", "Cookie2", "Proxy", "Fly-Client-IP"} {
+		for _, name := range []string{"Cookie", "Cookie2", "Origin", "Proxy", "Referer", "Sec-Fetch-Mode", "Sec-Fetch-Site", "Fly-Client-IP"} {
 			if values := request.Header.Values(name); len(values) != 0 {
 				t.Fatalf("upstream %s headers = %q, want none", name, values)
 			}
@@ -74,7 +74,11 @@ func TestHandlerSanitizesHeaders(t *testing.T) {
 	request.Header.Add("Cookie", "session=secret")
 	request.Header.Add("Cookie", "tracking=secret")
 	request.Header.Set("Cookie2", "legacy=secret")
+	request.Header.Set("Origin", "https://git-calendar.org")
 	request.Header.Set("Proxy", "http://attacker.example")
+	request.Header.Set("Referer", "https://git-calendar.org/")
+	request.Header.Set("Sec-Fetch-Mode", "cors")
+	request.Header.Set("Sec-Fetch-Site", "cross-site")
 	request.Header.Set("Authorization", "Basic private-repository-credentials")
 	request.Header.Set("User-Agent", "AttackerProxy/1.0")
 	request.Header.Set("Fly-Client-IP", "198.51.100.42")
@@ -106,14 +110,16 @@ func TestHandlerExtensionlessCalendar(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name        string
-		method      string
-		contentType string
-		wantStatus  int
-		wantCalls   int
+		name           string
+		method         string
+		contentType    string
+		upstreamStatus int
+		wantStatus     int
+		wantCalls      int
 	}{
-		{name: "calendar", method: http.MethodGet, contentType: "text/calendar; charset=utf-8", wantStatus: http.StatusOK, wantCalls: 1},
-		{name: "wrong content type", method: http.MethodGet, contentType: "application/json", wantStatus: http.StatusUnsupportedMediaType, wantCalls: 1},
+		{name: "calendar", method: http.MethodGet, contentType: "text/calendar; charset=utf-8", upstreamStatus: http.StatusOK, wantStatus: http.StatusOK, wantCalls: 1},
+		{name: "wrong content type", method: http.MethodGet, contentType: "application/json", upstreamStatus: http.StatusOK, wantStatus: http.StatusUnsupportedMediaType, wantCalls: 1},
+		{name: "upstream error", method: http.MethodGet, contentType: "application/json", upstreamStatus: http.StatusUnauthorized, wantStatus: http.StatusUnauthorized, wantCalls: 1},
 		{name: "unsafe method", method: http.MethodPost, contentType: "text/calendar", wantStatus: http.StatusBadRequest},
 	}
 
@@ -132,7 +138,7 @@ func TestHandlerExtensionlessCalendar(t *testing.T) {
 						t.Fatalf("upstream query = %q, want token preserved", request.URL.RawQuery)
 					}
 					return &http.Response{
-						StatusCode: http.StatusOK,
+						StatusCode: test.upstreamStatus,
 						Header:     http.Header{"Content-Type": {test.contentType}},
 						Body:       io.NopCloser(strings.NewReader("BEGIN:VCALENDAR")),
 					}, nil

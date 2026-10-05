@@ -18,8 +18,16 @@ func sanitizeRequestHeaders(headers http.Header, ipSourceHeader string) {
 	removeHopByHopHeaders(headers)
 	headers.Del("Cookie")
 	headers.Del("Cookie2")
+	headers.Del("Origin")
 	headers.Del("Proxy")
+	headers.Del("Referer")
 	headers.Del(ipSourceHeader)
+
+	for name := range headers {
+		if strings.HasPrefix(http.CanonicalHeaderKey(name), "Sec-Fetch-") {
+			headers.Del(name)
+		}
+	}
 
 	for _, name := range forwardingHeaderNames() {
 		headers.Del(name)
