@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"mime"
 	"net/http"
 	"strings"
 	"time"
@@ -73,9 +74,10 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// only allow calendar files and Git smart HTTP endpoints
-	if !isAllowedPath(destinationURL) {
-		http.Error(w, "target must be an .ics file or Git smart HTTP endpoint", http.StatusBadRequest)
+	// Extensionless calendar endpoints are verified by response content type.
+	verifyCalendar := !isAllowedPath(destinationURL)
+	if verifyCalendar && r.Method != http.MethodGet && r.Method != http.MethodHead {
+		http.Error(w, "target must be a calendar or Git smart HTTP endpoint", http.StatusBadRequest)
 		return
 	}
 
@@ -109,6 +111,14 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer response.Body.Close()
+
+	if verifyCalendar {
+		mediaType, _, _ := mime.ParseMediaType(response.Header.Get("Content-Type"))
+		if mediaType != "text/calendar" {
+			http.Error(w, "upstream response is not a calendar", http.StatusUnsupportedMediaType)
+			return
+		}
+	}
 
 	// forward the headers back to the client
 	sanitizeResponseHeaders(response.Header)
