@@ -102,6 +102,53 @@ func TestHandlerSanitizesHeaders(t *testing.T) {
 	}
 }
 
+func TestHandlerExtensionlessCalendar(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name        string
+		method      string
+		contentType string
+		wantStatus  int
+		wantCalls   int
+	}{
+		{name: "calendar", method: http.MethodGet, contentType: "text/calendar; charset=utf-8", wantStatus: http.StatusOK, wantCalls: 1},
+		{name: "wrong content type", method: http.MethodGet, contentType: "application/json", wantStatus: http.StatusUnsupportedMediaType, wantCalls: 1},
+		{name: "unsafe method", method: http.MethodPost, contentType: "text/calendar", wantStatus: http.StatusBadRequest},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+
+			calls := 0
+			handler := New(Options{
+				AllowedHosts:    []string{"hub.example.com"},
+				UpstreamTimeout: time.Second,
+				MaxResponseSize: 1024,
+				Transport: roundTripFunc(func(request *http.Request) (*http.Response, error) {
+					calls++
+					if request.URL.RawQuery != "token=secret==" {
+						t.Fatalf("upstream query = %q, want token preserved", request.URL.RawQuery)
+					}
+					return &http.Response{
+						StatusCode: http.StatusOK,
+						Header:     http.Header{"Content-Type": {test.contentType}},
+						Body:       io.NopCloser(strings.NewReader("BEGIN:VCALENDAR")),
+					}, nil
+				}),
+			})
+
+			response := httptest.NewRecorder()
+			handler.ServeHTTP(response, httptest.NewRequest(test.method, "/https://hub.example.com/api/timetable/my?token=secret==", nil))
+
+			if response.Code != test.wantStatus || calls != test.wantCalls {
+				t.Fatalf("response status = %d, transport calls = %d; want %d, %d", response.Code, calls, test.wantStatus, test.wantCalls)
+			}
+		})
+	}
+}
+
 func TestHandlerDoesNotServeAncillaryRoutes(t *testing.T) {
 	t.Parallel()
 
