@@ -22,4 +22,5 @@ env:
       web-api.worldpublicholiday.com,
       calendar.google.com,
       calendars.icloud.com,
-      hub.fel.cvut.cz
+      hub.fel.cvut.cz,
+      forgejo.jotalac.dev
