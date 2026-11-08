@@ -155,6 +155,104 @@ func TestHandlerExtensionlessCalendar(t *testing.T) {
 	}
 }
 
+func TestHandlerHostAllowlist(t *testing.T) {
+	t.Parallel()
+
+	for _, test := range []struct {
+		target  string
+		allowed bool
+	}{
+		{target: "https://other.example/calendar.ics", allowed: true},
+		{target: "https://other.example/calendar.ICS?token=secret", allowed: true},
+		{target: "https://other.example/calendar.ics.json"},
+		{target: "https://other.example/calendar.ics/feed"},
+		{target: "https://other.example/feed?filename=calendar.ics"},
+		{target: "https://other.example/feed"},
+		{target: "https://other.example/repo.git/info/refs"},
+		{target: "https://allowed.example/feed", allowed: true},
+		{target: "https://allowed.example/repo.git/info/refs", allowed: true},
+	} {
+		t.Run(test.target, func(t *testing.T) {
+			t.Parallel()
+
+			calls := 0
+			handler := New(Options{
+				AllowedHosts:    []string{"allowed.example"},
+				UpstreamTimeout: time.Second,
+				MaxResponseSize: 1024,
+				Transport: roundTripFunc(func(request *http.Request) (*http.Response, error) {
+					calls++
+					return &http.Response{
+						StatusCode: http.StatusOK,
+						Header:     http.Header{"Content-Type": {"text/calendar"}},
+						Body:       io.NopCloser(strings.NewReader("BEGIN:VCALENDAR")),
+					}, nil
+				}),
+			})
+
+			response := httptest.NewRecorder()
+			handler.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/"+test.target, nil))
+			wantStatus, wantCalls := http.StatusForbidden, 0
+			if test.allowed {
+				wantStatus, wantCalls = http.StatusOK, 1
+			}
+			if response.Code != wantStatus || calls != wantCalls {
+				t.Fatalf("response status = %d, transport calls = %d; want %d, %d", response.Code, calls, wantStatus, wantCalls)
+			}
+		})
+	}
+}
+
+func TestHandlerCalendarRestrictions(t *testing.T) {
+	t.Parallel()
+
+	for _, test := range []struct {
+		method  string
+		target  string
+		allowed bool
+	}{
+		{http.MethodGet, "http://example.com:80/calendar.ics", true},
+		{http.MethodHead, "https://example.com:443/calendar.ICS", true},
+		{http.MethodHead, "https://example.com/feed", true},
+		{http.MethodPost, "https://example.com/calendar.ics", false},
+		{http.MethodPut, "https://example.com/calendar.ics", false},
+		{http.MethodDelete, "https://example.com/calendar.ics", false},
+		{http.MethodGet, "http://example.com:8080/calendar.ics", false},
+		{http.MethodGet, "https://example.com:80/calendar.ics", false},
+		{http.MethodGet, "http://example.com:443/calendar.ics", false},
+		{http.MethodGet, "https://example.com:8443/feed", false},
+		{http.MethodGet, "ftp://example.com/calendar.ics", false},
+		{http.MethodPost, "https://example.com:8443/repo.git/git-upload-pack", true},
+	} {
+		t.Run(test.method+" "+test.target, func(t *testing.T) {
+			t.Parallel()
+			calls := 0
+			handler := New(Options{
+				AllowedHosts:    []string{"example.com"},
+				UpstreamTimeout: time.Second,
+				MaxResponseSize: 1024,
+				Transport: roundTripFunc(func(*http.Request) (*http.Response, error) {
+					calls++
+					return &http.Response{
+						StatusCode: http.StatusOK,
+						Header:     http.Header{"Content-Type": {"text/calendar"}},
+						Body:       io.NopCloser(strings.NewReader("")),
+					}, nil
+				}),
+			})
+			response := httptest.NewRecorder()
+			handler.ServeHTTP(response, httptest.NewRequest(test.method, "/"+test.target, nil))
+			wantStatus, wantCalls := http.StatusBadRequest, 0
+			if test.allowed {
+				wantStatus, wantCalls = http.StatusOK, 1
+			}
+			if response.Code != wantStatus || calls != wantCalls {
+				t.Fatalf("response status = %d, transport calls = %d; want %d, %d", response.Code, calls, wantStatus, wantCalls)
+			}
+		})
+	}
+}
+
 func TestHandlerDoesNotServeAncillaryRoutes(t *testing.T) {
 	t.Parallel()
 

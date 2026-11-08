@@ -76,13 +76,21 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// Extensionless calendar endpoints are verified by response content type.
 	verifyCalendar := !isAllowedPath(destinationURL)
-	if verifyCalendar && r.Method != http.MethodGet && r.Method != http.MethodHead {
+	if !isGitRequest(destinationURL) && r.Method != http.MethodGet && r.Method != http.MethodHead {
 		http.Error(w, "target must be a calendar or Git smart HTTP endpoint", http.StatusBadRequest)
 		return
 	}
 
-	// reject unknown hosts
-	if !h.isAllowedHost(destinationURL) {
+	if !isGitRequest(destinationURL) {
+		port := destinationURL.Port()
+		if port != "" && !(destinationURL.Scheme == "http" && port == "80") && !(destinationURL.Scheme == "https" && port == "443") {
+			http.Error(w, "calendar targets require standard HTTP(S) ports", http.StatusBadRequest)
+			return
+		}
+	}
+
+	// only .ics paths are exempt from the host allowlist
+	if !strings.HasSuffix(strings.ToLower(destinationURL.Path), ".ics") && !h.isAllowedHost(destinationURL) {
 		http.Error(w, "forbidden upstream host", http.StatusForbidden)
 		return
 	}

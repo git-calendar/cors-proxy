@@ -78,7 +78,7 @@ const response = await fetch(`http://localhost:8080/${target}`);
 const data = await response.arrayBuffer();
 ```
 
-The proxy only accepts HTTP(S) paths ending in `.ics` or the Git smart HTTP endpoints `info/refs`, `git-upload-pack`, and `git-receive-pack`. The target host must also be listed in `ALLOWED_HOSTS`.
+The proxy accepts HTTP(S) URLs with paths ending in `.ics` (case-insensitive) on any public host, without requiring an entry in `ALLOWED_HOSTS`. All other paths require the target host to be listed in `ALLOWED_HOSTS`: Git smart HTTP endpoints (`info/refs`, `git-upload-pack`, and `git-receive-pack`) are supported, and other paths accept GET/HEAD requests only, with successful responses required to have a `text/calendar` content type. All calendar requests (including `.ics` URLs) are restricted to GET/HEAD and standard HTTP(S) ports (80 for HTTP, 443 for HTTPS). Git endpoints retain their existing method and port behavior. Private and other non-public upstream IP addresses remain blocked.
 
 ## Report abuse
 Every deployment exposes `/.well-known/security.txt` with the contact configured by `ABUSE_URL`. The same contact is included in every upstream `User-Agent`. Operators should set it to their own monitored HTTPS page or `mailto:` address.
